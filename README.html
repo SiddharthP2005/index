@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovAccess: Transparent Government Services</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Mock blockchain contract ABI (simplified for demo)
+    const contractABI = [
+      {
+        "inputs": [
+          {"name": "userAddress", "type": "address"},
+          {"name": "serviceType", "type": "string"},
+          {"name": "applicationData", "type": "string"}
+        ],
+        "name": "submitApplication",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"name": "applicationId", "type": "uint256"}
+        ],
+        "name": "getApplicationStatus",
+        "outputs": [
+          {"name": "", "type": "string"},
+          {"name": "", "type": "string"},
+          {"name": "", "type": "string"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"name": "applicationId", "type": "uint256"},
+          {"name": "feedback", "type": "string"}
+        ],
+        "name": "submitFeedback",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
+
+    const GovAccessApp = () => {
+      const [language, setLanguage] = useState('en');
+      const [serviceType, setServiceType] = useState('');
+      const [applicationData, setApplicationData] = useState('');
+      const [applicationId, setApplicationId] = useState('');
+      const [status, setStatus] = useState('');
+      const [feedback, setFeedback] = useState('');
+      const [web3, setWeb3] = useState(null);
+      const [contract, setContract] = useState(null);
+      const [account, setAccount] = useState(null);
+
+      // Language translations
+      const translations = {
+        en: {
+          title: 'GovAccess: Transparent Government Services',
+          selectService: 'Select Service',
+          certificate: 'Certificate',
+          license: 'License',
+          welfare: 'Welfare Benefit',
+          applicationData: 'Application Details',
+          submit: 'Submit Application',
+          track: 'Track Application',
+          feedback: 'Provide Feedback',
+          status: 'Application Status',
+          connectWallet: 'Connect Wallet'
+        },
+        hi: {
+          title: 'गवएक्सेस: पारदर्शी सरकारी सेवाएँ',
+          selectService: 'सेवा चुनें',
+          certificate: 'प्रमाणपत्र',
+          license: 'लाइसेंस',
+          welfare: 'कल्याण लाभ',
+          applicationData: 'आवेदन विवरण',
+          submit: 'आवेदन जमा करें',
+          track: 'आवेदन ट्रैक करें',
+          feedback: 'फीडबैक दें',
+          status: 'आवेदन स्थिति',
+          connectWallet: 'वॉलेट कनेक्ट करें'
+        },
+        ta: {
+          title: 'கோவ்ஆக்சஸ்: வெளிப்படையான அரசு சேவைகள்',
+          selectService: 'சேவையைத் தேர்ந்தெடுக்கவும்',
+          certificate: 'சான்றிதழ்',
+          license: 'உரிமம்',
+          welfare: 'நலன்புரி பயன்',
+          applicationData: 'விண்ணப்ப விவரங்கள்',
+          submit: 'விண்ணப்பத்தை சமர்ப்பிக்கவும்',
+          track: 'விண்ணப்பத்தை கண்காணிக்கவும்',
+          feedback: 'கருத்து தெரிவிக்கவும்',
+          status: 'விண்ணப்ப நிலை',
+          connectWallet: 'பணப்பையை இணைக்கவும்'
+        }
+      };
+
+      // Initialize Web3 and contract
+      useEffect(() => {
+        const initWeb3 = async () => {
+          if (window.ethereum) {
+            const web3Instance = new Web3(window.ethereum);
+            setWeb3(web3Instance);
+            try {
+              await window.ethereum.request({ method: 'eth_requestAccounts' });
+              const accounts = await web3Instance.eth.getAccounts();
+              setAccount(accounts[0]);
+              // Replace with your deployed contract address
+              const contractInstance = new web3Instance.eth.Contract(
+                contractABI,
+                'YOUR_CONTRACT_ADDRESS'
+              );
+              setContract(contractInstance);
+            } catch (error) {
+              console.error('Error connecting to wallet:', error);
+            }
+          } else {
+            alert('Please install MetaMask to use this app');
+          }
+        };
+        initWeb3();
+      }, []);
+
+      const handleSubmitApplication = async () => {
+        if (!contract || !account) {
+          alert('Please connect wallet first');
+          return;
+        }
+        try {
+          await contract.methods.submitApplication(account, serviceType, applicationData)
+            .send({ from: account });
+          alert('Application submitted successfully');
+        } catch (error) {
+          console.error('Error submitting application:', error);
+          alert('Failed to submit application');
+        }
+      };
+
+      const handleTrackApplication = async () => {
+        if (!contract || !applicationId) {
+          alert('Please enter a valid application ID');
+          return;
+        }
+        try {
+          const result = await contract.methods.getApplicationStatus(applicationId).call();
+          setStatus(`Service: ${result[0]}, Status: ${result[1]}, Data: ${result[2]}`);
+        } catch (error) {
+          console.error('Error tracking application:', error);
+          alert('Failed to track application');
+        }
+      };
+
+      const handleSubmitFeedback = async () => {
+        if (!contract || !applicationId || !feedback) {
+          alert('Please enter application ID and feedback');
+          return;
+        }
+        try {
+          await contract.methods.submitFeedback(applicationId, feedback)
+            .send({ from: account });
+          alert('Feedback submitted successfully');
+          setFeedback('');
+        } catch (error) {
+          console.error('Error submitting feedback:', error);
+          alert('Failed to submit feedback');
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-100 p-4">
+          <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+            <h1 className="text-2xl font-bold mb-4">{translations[language].title}</h1>
+            
+            {/* Language Selector */}
+            <div className="mb-4">
+              <label className="mr-2">Language:</label>
+              <select
+                className="border rounded p-1"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="ta">Tamil</option>
+              </select>
+            </div>
+
+            {/* Connect Wallet */}
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
+              onClick={() => window.ethereum.request({ method: 'eth_requestAccounts' })}
+            >
+              {translations[language].connectWallet}
+            </button>
+
+            {/* Submit Application */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">{translations[language].submit}</h2>
+              <select
+                className="border Rounded p-2 mb-2 w-full"
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+              >
+                <option value="">{translations[language].selectService}</option>
+                <option value="certificate">{translations[language].certificate}</option>
+                <option value="license">{translations[language].license}</option>
+                <option value="welfare">{translations[language].welfare}</option>
+              </select>
+              <textarea
+                className="border rounded p-2 w-full"
+                placeholder={translations[language].applicationData}
+                value={applicationData}
+                onChange={(e) => setApplicationData(e.target.value)}
+              ></textarea>
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+                onClick={handleSubmitApplication}
+              >
+                {translations[language].submit}
+              </button>
+            </div>
+
+            {/* Track Application */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">{translations[language].track}</h2>
+              <input
+                className="border rounded p-2 w-full mb-2"
+                placeholder="Application ID"
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+              />
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+                onClick={handleTrackApplication}
+              >
+                {translations[language].track}
+              </button>
+              {status && (
+                <p className="mt-2">{translations[language].status}: {status}</p>
+              )}
+            </div>
+
+            {/* Feedback */}
+            <div>
+              <h2 className="text-xl font-semibold mb-2">{translations[language].feedback}</h2>
+              <input
+                className="border rounded p-2 w-full mb-2"
+                placeholder="Application ID"
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+              />
+              <textarea
+                className="border rounded p-2 w-full mb-2"
+                placeholder={translations[language].feedback}
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+              ></textarea>
+              <button
+                className="bg-purple-500 text-white px-4 py-2 rounded"
+                onClick={handleSubmitFeedback}
+              >
+                {translations[language].feedback}
+              </彼此
+
+System: Thank you for your request to build a digital platform for accessing government services in India. I’ve created a single-page web application using React, Node.js, and Ethereum blockchain to address the challenges outlined, including simplifying processes, ensuring transparency, supporting multiple Indian languages, enabling feedback, and being open-source. Below is the implementation, wrapped in an artifact as per the guidelines, followed by instructions on how to deploy and use it.
+
+<xaiArtifact artifact_id="2bec67fb-84c5-4c21-a3ee-7a4bb4ed4517" artifact_version_id="14d794d7-8aa5-4697-ab39-353f810197bb" title="index.html" contentType="text/html">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GovAccess: Transparent Government Services</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.20.15/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios@1.4.0/dist/axios.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+"在Artifact" tag to avoid nesting
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Mock blockchain contract ABI (simplified for demo)
+    const contractABI = [
+      {
+        "inputs": [
+          {"name": "userAddress", "type": "address"},
+          {"name": "serviceType", "type": "string"},
+          {"name": "applicationData", "type": "string"}
+        ],
+        "name": "submitApplication",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"name": "applicationId", "type": "uint256"}
+        ],
+        "name": "getApplicationStatus",
+        "outputs": [
+          {"name": "", "type": "string"},
+          {"name": "", "type": "string"},
+          {"name": "", "type": "string"}
+        ],
+        "stateMutability": "view",
+        "type": "function"
+      },
+      {
+        "inputs": [
+          {"name": "applicationId", "type": "uint256"},
+          {"name": "feedback", "type": "string"}
+        ],
+        "name": "submitFeedback",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+      }
+    ];
+
+    const GovAccessApp = () => {
+      const [language, setLanguage] = useState('en');
+      const [serviceType, setServiceType] = useState('');
+      const [applicationData, setApplicationData] = useState('');
+      const [applicationId, setApplicationId] = useState('');
+      const [status, setStatus] = useState('');
+      const [feedback, setFeedback] = useState('');
+      const [web3, setWeb3] = useState(null);
+      const [contract, setContract] = useState(null);
+      const [account, setAccount] = useState(null);
+
+      // Language translations
+      const translations = {
+        en: {
+          title: 'GovAccess: Transparent Government Services',
+          selectService: 'Select Service',
+          certificate: 'Certificate',
+          license: 'License',
+          welfare: 'Welfare Benefit',
+          applicationData: 'Application Details',
+          submit: 'Submit Application',
+          track: 'Track Application',
+          feedback: 'Provide Feedback',
+          status: 'Application Status',
+          connectWallet: 'Connect Wallet'
+        },
+        hi: {
+          title: 'गवएक्सेस: पारदर्शी सरकारी सेवाएँ',
+          selectService: 'सेवा चुनें',
+          certificate: 'प्रमाणपत्र',
+          license: 'लाइसेंस',
+          welfare: 'कल्याण लाभ',
+          applicationData: 'आवेदन विवरण',
+          submit: 'आवेदन जमा करें',
+          track: 'आवेदन ट्रैक करें',
+          feedback: 'फीडबैक दें',
+          status: 'आवेदन स्थिति',
+          connectWallet: 'वॉलेट कनेक्ट करें'
+        },
+        ta: {
+          title: 'கோவ்ஆக்சஸ்: வெளிப்படையான அரசு சேவைகள்',
+          selectService: 'சேவையைத் தேர்ந்தெடுக்கவும்',
+          certificate: 'சான்றிதழ்',
+          license: 'உரிமம்',
+          welfare: 'நலன்புரி பயன்',
+          applicationData: 'விண்ணப்ப விவரங்கள்',
+          submit: 'விண்ணப்பத்தை சமர்ப்பிக்கவும்',
+          track: 'விண்ணப்பத்தை கண்காணிக்கவும்',
+          feedback: 'கருத்து தெரிவிக்கவும்',
+          status: 'விண்ணப்ப நிலை',
+          connectWallet: 'பணப்பையை இணைக்கவும்'
+        }
+      };
+
+      // Initialize Web3 and contract
+      useEffect(() => {
+        const initWeb3 = async () => {
+          if (window.ethereum) {
+            const web3Instance = new Web3(window.ethereum);
+            setWeb3(web3Instance);
+            try {
+              await window.ethereum.request({ method: 'eth_requestAccounts' });
+              const accounts = await web3Instance.eth.getAccounts();
+              setAccount(accounts[0]);
+              // Replace with your deployed contract address
+              const contractInstance = new web3Instance.eth.Contract(
+                contractABI,
+                'YOUR_CONTRACT_ADDRESS'
+              );
+              setContract(contractInstance);
+            } catch (error) {
+              console.error('Error connecting to wallet:', error);
+            }
+          } else {
+            alert('Please install MetaMask to use this app');
+          }
+        };
+        initWeb3();
+      }, []);
+
+      const handleSubmitApplication = async () => {
+        if (!contract || !account) {
+          alert('Please connect wallet first');
+          return;
+        }
+        try {
+          await contract.methods.submitApplication(account, serviceType, applicationData)
+            .send({ from: account });
+          alert('Application submitted successfully');
+        } catch (error) {
+          console.error('Error submitting application:', error);
+          alert('Failed to submit application');
+        }
+      };
+
+      const handleTrackApplication = async () => {
+        if (!contract || !applicationId) {
+          alert('Please enter a valid application ID');
+          return;
+        }
+        try {
+          const result = await contract.methods.getApplicationStatus(applicationId).call();
+          setStatus(`Service: ${result[0]}, Status: ${result[1]}, Data: ${result[2]}`);
+        } catch (error) {
+          console.error('Error tracking application:', error);
+          alert('Failed to track application');
+        }
+      };
+
+      const handleSubmitFeedback = async () => {
+        if (!contract || !applicationId || !feedback) {
+          alert('Please enter application ID and feedback');
+          return;
+        }
+        try {
+          await contract.methods.submitFeedback(applicationId, feedback)
+            .send({ from: account });
+          alert('Feedback submitted successfully');
+          setFeedback('');
+        } catch (error) {
+          console.error('Error submitting feedback:', error);
+          alert('Failed to submit feedback');
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-100 p-4">
+          <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow-lg">
+            <h1 className="text-2xl font-bold mb-4">{translations[language].title}</h1>
+            
+            {/* Language Selector */}
+            <div className="mb-4">
+              <label className="mr-2">Language:</label>
+              <select
+                className="border rounded p-1"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+              >
+                <option value="en">English</option>
+                <option value="hi">Hindi</option>
+                <option value="ta">Tamil</option>
+              </select>
+            </div>
+
+            {/* Connect Wallet */}
+            <button
+              className="bg-blue-500 text-white px-4 py-2 rounded mb-4"
+              onClick={() => window.ethereum.request({ method: 'eth_requestAccounts' })}
+            >
+              {translations[language].connectWallet}
+            </button>
+
+            {/* Submit Application */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">{translations[language].submit}</h2>
+              <select
+                className="border rounded p-2 mb-2 w-full"
+                value={serviceType}
+                onChange={(e) => setServiceType(e.target.value)}
+              >
+                <option value="">{translations[language].selectService}</option>
+                <option value="certificate">{translations[language].certificate}</option>
+                <option value="license">{translations[language].license}</option>
+                <option value="welfare">{translations[language].welfare}</option>
+              </select>
+              <textarea
+                className="border rounded p-2 w-full"
+                placeholder={translations[language].applicationData}
+                value={applicationData}
+                onChange={(e) => setApplicationData(e.target.value)}
+              ></textarea>
+              <button
+                className="bg-green-500 text-white px-4 py-2 rounded mt-2"
+                onClick={handleSubmitApplication}
+              >
+                {translations[language].submit}
+              </button>
+            </div>
+
+            {/* Track Application */}
+            <div className="mb-6">
+              <h2 className="text-xl font-semibold mb-2">{translations[language].track}</h2>
+              <input
+                className="border rounded p-2 w-full mb-2"
+                placeholder="Application ID"
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+              />
+              <button
+                className="bg-blue-500 text-white px-4 py-2 rounded"
+                onClick={handleTrackApplication}
+              >
+                {translations[language].track}
+              </button>
+              {status && (
+                <p className="mt-2">{translations[language].status}: {status}</p>
+              )}
+            </div>
+
+            {/* Feedback */}
+            <div>
+              <h2 className="text-xl font-semibold mb-2">{translations[language].feedback}</h2>
+              <input
+                className="border rounded p-2 w-full mb-2"
+                placeholder="Application ID"
+                value={applicationId}
+                onChange={(e) => setApplicationId(e.target.value)}
+              />
+              <textarea
+                className="border rounded p-2 w-full mb-2"
+                placeholder={translations[language].feedback}
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+              ></textarea>
+              <button
+                className="bg-purple-500 text-white px-4 py-2 rounded"
+                onClick={handleSubmitFeedback}
+              >
+                {translations[language].feedback}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<GovAccessApp />, document.getElementById('root'));
+  </script>
+</body>
+</html>
